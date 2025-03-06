@@ -1,9 +1,5 @@
 import { Elysia } from "elysia";
 import { staticPlugin } from '@elysiajs/static';
-
-
-
-
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { SSEElysiaTransport } from "./SSEElysiaTransport"
