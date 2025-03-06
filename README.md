@@ -52,14 +52,14 @@ This will create a minified Node.js-compatible build in the `dist` directory.
 ### Project Structure
 
 - `src/index.ts` - Main entry point for the server
-- `src/BunServerTransport.ts` - SSE transport implementation for Bun and Elysia
+- `src/SSEElysiaTransport.ts` - SSE transport implementation for Bun and Elysia
 
 ### Creating an MCP Server
 
 ```typescript
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SSEElysiaTransport } from "./BunServerTransport";
+import { SSEElysiaTransport } from "./SSEElysiaTransport";
 import { Elysia } from "elysia";
 
 // Create MCP server
