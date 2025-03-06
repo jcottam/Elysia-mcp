@@ -55,7 +55,6 @@ export class SSEElysiaTransport implements Transport {
       console.log(`[Transport:${this._sessionId}] Endpoint event sent`);
       
       // Start the keepalive interval
-      this._startKeepalive();
     } catch (error) {
       console.error(`[Transport:${this._sessionId}] Error starting transport:`, error);
       this._isConnected = false;
@@ -64,27 +63,6 @@ export class SSEElysiaTransport implements Transport {
     }
   }
   
-
-
-private _startKeepalive(): void {
-  this._stopKeepalive();
-  
-  this._keepaliveInterval = setInterval(() => {
-    try {
-      if (this._isConnected) {
-        this._controller.enqueue(this._encoder.encode(": keepalive\n\n"));
-      } else {
-        this._stopKeepalive();
-      }
-    } catch (error) {
-      console.error(`[Transport:${this._sessionId}] Keepalive error:`, error);
-      this._stopKeepalive();
-      this._isConnected = false;
-      this.onclose?.();
-    }
-  }, this._KEEPALIVE_INTERVAL);
-}
-
   private _stopKeepalive(): void {
     if (this._keepaliveInterval) {
       clearInterval(this._keepaliveInterval);
