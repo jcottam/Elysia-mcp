@@ -112,11 +112,12 @@ app.listen(3001, () => {
 
 ## Debugging
 
-You can debug your MCP server using the MCP Inspector tool:
+You can debug your MCP server using the MCP Inspector tool and connect through sse
 
 ```bash
-npx @modelcontextprotocol/inspector --url http://localhost:3001/sse
+npx @modelcontextprotocol/inspector
 ```
+
 
 This will open a web interface where you can:
 - List available resources, tools, and prompts
