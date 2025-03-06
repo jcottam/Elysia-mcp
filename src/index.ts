@@ -6,7 +6,7 @@ import { staticPlugin } from '@elysiajs/static';
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SSEElysiaTransport } from "./BunServerTransport"
+import { SSEElysiaTransport } from "./SSEElysiaTransport"
 
 // Create MCP server
 const server = new McpServer({
