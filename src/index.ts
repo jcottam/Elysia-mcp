@@ -134,7 +134,6 @@ const transports = new Map();
 
 // Create Elysia app with the Bun platform
 const app = new Elysia()
-  // Use Bun adapter explicitly
   .use(staticPlugin({
     assets: './public',
     prefix: '/'
