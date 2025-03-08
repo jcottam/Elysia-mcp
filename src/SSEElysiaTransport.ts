@@ -51,7 +51,6 @@ export class SSEElysiaTransport implements Transport {
       this._sendEvent("endpoint", `${encodeURI(this._endpoint)}?sessionId=${this._sessionId}`);
       console.log(`[Transport:${this._sessionId}] Endpoint event sent`);
       
-      // Start the keepalive interval
     } catch (error) {
       console.error(`[Transport:${this._sessionId}] Error starting transport:`, error);
       this._isConnected = false;
@@ -72,7 +71,6 @@ export class SSEElysiaTransport implements Transport {
     } catch (error) {
       console.error(`[Transport:${this._sessionId}] Error sending event:`, error);
       this._isConnected = false;
-      this._stopKeepalive();
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -125,7 +123,6 @@ export class SSEElysiaTransport implements Transport {
   async close(): Promise<void> {
     console.log(`[Transport:${this._sessionId}] Closing transport`);
     
-    this._stopKeepalive();
     this._isConnected = false;
     this.onclose?.();
   }
