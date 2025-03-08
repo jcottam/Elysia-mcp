@@ -10,8 +10,6 @@ export class SSEElysiaTransport implements Transport {
   private _encoder = new TextEncoder();
   private _stream: ReadableStream<Uint8Array>;
   private _controller!: ReadableStreamDefaultController<Uint8Array>;
-  private _keepaliveInterval: ReturnType<typeof setInterval> | undefined;
-  private _KEEPALIVE_INTERVAL = 30000; 
   
   onclose?: () => void;
   onerror?: (error: Error) => void;
@@ -26,7 +24,6 @@ export class SSEElysiaTransport implements Transport {
         this._controller = controller;
       },
       cancel: () => {
-        this._stopKeepalive();
         this._isConnected = false;
         this.onclose?.();
       }
@@ -63,12 +60,6 @@ export class SSEElysiaTransport implements Transport {
     }
   }
   
-  private _stopKeepalive(): void {
-    if (this._keepaliveInterval) {
-      clearInterval(this._keepaliveInterval);
-      this._keepaliveInterval = undefined;
-    }
-  }
   
   private _sendEvent(event: string, data: string): void {
     if (!this._isConnected) {
