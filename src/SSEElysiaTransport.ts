@@ -1,24 +1,37 @@
+// External dependencies
 import { randomUUID } from "crypto";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { JSONRPCMessageSchema, type JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import {
+  JSONRPCMessageSchema,
+  type JSONRPCMessage,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { Context } from "elysia";
 
+// Types
+interface WeatherData {
+  temp: number;
+  condition: string;
+}
 
 export class SSEElysiaTransport implements Transport {
-  private _sessionId: string;
+  // Private properties
+  private readonly _sessionId: string;
   private _isConnected = false;
-  private _encoder = new TextEncoder();
-  private _stream: ReadableStream<Uint8Array>;
+  private readonly _encoder = new TextEncoder();
+  private readonly _stream: ReadableStream<Uint8Array>;
   private _controller!: ReadableStreamDefaultController<Uint8Array>;
-  
+
+  // Event handlers
   onclose?: () => void;
   onerror?: (error: Error) => void;
   onmessage?: (message: JSONRPCMessage) => void;
 
-
-  constructor(private _endpoint: string, private _ctx: Context) {
+  constructor(
+    private readonly _endpoint: string,
+    private readonly _ctx: Context
+  ) {
     this._sessionId = randomUUID();
-    
+
     this._stream = new ReadableStream({
       start: (controller) => {
         this._controller = controller;
@@ -26,118 +39,140 @@ export class SSEElysiaTransport implements Transport {
       cancel: () => {
         this._isConnected = false;
         this.onclose?.();
-      }
+      },
     });
   }
 
   async start(): Promise<void> {
-    console.log(`[Transport:${this._sessionId}] Starting transport`);
-    
-    // If already started, don't do anything
+    this.log("Starting transport");
+
+    // Prevent duplicate starts
     if (this._isConnected) {
-      console.log(`[Transport:${this._sessionId}] Already started`);
+      this.log("Already started");
       return;
     }
-    
+
     try {
-      // Set up the response with the stream
-      this._ctx.response = new Response(this._stream);
-      
-      // Mark as connected
-      this._isConnected = true;
-      console.log(`[Transport:${this._sessionId}] Transport connected`);
-      
-      // Send endpoint event
-      this._sendEvent("endpoint", `${encodeURI(this._endpoint)}?sessionId=${this._sessionId}`);
-      console.log(`[Transport:${this._sessionId}] Endpoint event sent`);
-      
+      this._setupResponse();
+      this._markAsConnected();
+      this._sendEndpointEvent();
     } catch (error) {
-      console.error(`[Transport:${this._sessionId}] Error starting transport:`, error);
-      this._isConnected = false;
-      this.onerror?.(error instanceof Error ? error : new Error(String(error)));
+      this._handleError("Error starting transport", error);
       throw error;
     }
   }
-  
-  
+
+  private _setupResponse(): void {
+    this._ctx.response = new Response(this._stream);
+  }
+
+  private _markAsConnected(): void {
+    this._isConnected = true;
+    this.log("Transport connected");
+  }
+
+  private _sendEndpointEvent(): void {
+    const endpointUrl = `${encodeURI(this._endpoint)}?sessionId=${
+      this._sessionId
+    }`;
+    this._sendEvent("endpoint", endpointUrl);
+    this.log("Endpoint event sent");
+  }
+
   private _sendEvent(event: string, data: string): void {
     if (!this._isConnected) {
-      console.error(`[Transport:${this._sessionId}] Cannot send event, not connected`);
+      this.log("Cannot send event, not connected", "error");
       return;
     }
-    
+
     try {
-      this._controller.enqueue(this._encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+      const eventData = `event: ${event}\ndata: ${data}\n\n`;
+      this._controller.enqueue(this._encoder.encode(eventData));
     } catch (error) {
-      console.error(`[Transport:${this._sessionId}] Error sending event:`, error);
-      this._isConnected = false;
-      this.onerror?.(error instanceof Error ? error : new Error(String(error)));
+      this._handleError("Error sending event", error);
+    }
+  }
+
+  private _handleError(message: string, error: unknown): void {
+    this.log(message, "error");
+    this._isConnected = false;
+    this.onerror?.(error instanceof Error ? error : new Error(String(error)));
+  }
+
+  private log(message: string, level: "info" | "error" = "info"): void {
+    const prefix = `[Transport:${this._sessionId}]`;
+    if (level === "error") {
+      console.error(`${prefix} ${message}`);
+    } else {
+      console.log(`${prefix} ${message}`);
     }
   }
 
   async handlePostMessage(ctx: Context): Promise<Response> {
-    console.log(`[Transport:${this._sessionId}] Received message`);
-    
+    this.log("Received message");
+
     if (!this._isConnected) {
-      console.error(`[Transport:${this._sessionId}] Not connected`);
-      return new Response(JSON.stringify({ error: "SSE connection not established" }), {
-        status: 500,
-        headers: { "content-type": "application/json" }
-      });
+      this.log("Not connected", "error");
+      return this._createErrorResponse("SSE connection not established", 500);
     }
-    
+
     try {
-      // Handle the message
       await this.handleMessage(ctx.body);
-      
-      // Return success
-      return new Response(JSON.stringify({ success: true }), {
-        status: 202,
-        headers: { "content-type": "application/json" }
-      });
+      return this._createSuccessResponse();
     } catch (error) {
-      console.error(`[Transport:${this._sessionId}] Error handling message:`, error);
-      return new Response(JSON.stringify({ error: String(error) }), {
-        status: 400,
-        headers: { "content-type": "application/json" }
-      });
+      this.log("Error handling message", "error");
+      return this._createErrorResponse(String(error), 400);
     }
   }
 
+  private _createErrorResponse(message: string, status: number): Response {
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  private _createSuccessResponse(): Response {
+    return new Response(JSON.stringify({ success: true }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   async handleMessage(message: unknown): Promise<void> {
-    console.log(`[Transport:${this._sessionId}] Parsing message`);
-    
+    this.log("Parsing message");
+
     let parsedMessage: JSONRPCMessage;
     try {
       parsedMessage = JSONRPCMessageSchema.parse(message);
     } catch (error) {
-      console.error(`[Transport:${this._sessionId}] Invalid message format:`, error);
+      this.log("Invalid message format", "error");
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
-    
-    console.log(`[Transport:${this._sessionId}] Forwarding message to handler`);
+
+    this.log("Forwarding message to handler");
     this.onmessage?.(parsedMessage);
   }
 
   async close(): Promise<void> {
-    console.log(`[Transport:${this._sessionId}] Closing transport`);
-    
+    this.log("Closing transport");
     this._isConnected = false;
     this.onclose?.();
   }
 
   async send(message: JSONRPCMessage): Promise<void> {
-    console.log(`[Transport:${this._sessionId}] Sending message`);
-    
+    this.log("Sending message");
+
     if (!this._isConnected) {
-      console.error(`[Transport:${this._sessionId}] Not connected`);
+      this.log("Not connected", "error");
       throw new Error("Not connected");
     }
-    
+
     this._sendEvent("message", JSON.stringify(message));
   }
 
+  // Public getter
   get sessionId(): string {
     return this._sessionId;
   }
