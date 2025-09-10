@@ -7,12 +7,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Context } from "elysia";
 
-// Types
-interface WeatherData {
-  temp: number;
-  condition: string;
-}
-
 export class SSEElysiaTransport implements Transport {
   // Private properties
   private readonly _sessionId: string;
